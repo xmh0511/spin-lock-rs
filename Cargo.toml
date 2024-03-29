@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/xmh0511/spin-lock-rs"
 license = "MIT"
+description = "A simple spin lock implemented by the standard facilities"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
