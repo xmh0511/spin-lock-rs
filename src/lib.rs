@@ -5,12 +5,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub struct SpinLock<T> {
     state: AtomicBool,
     data: UnsafeCell<T>,
+    is_acquired: AtomicBool,
 }
 impl<T> SpinLock<T> {
     pub fn new(val: T) -> Self {
         Self {
             state: AtomicBool::new(false),
             data: UnsafeCell::new(val),
+            is_acquired: AtomicBool::new(false),
         }
     }
     pub fn lock(&self) -> SpinLockGuard<'_, T> {
@@ -21,12 +23,25 @@ impl<T> SpinLock<T> {
         {
             std::hint::spin_loop();
         }
+        self.is_acquired.store(true, Ordering::Relaxed);
         SpinLockGuard {
             data_mut_borrow: unsafe { &mut *self.data.get() },
             state: self,
         }
     }
+
+    pub fn try_lock(&self) -> std::io::Result<SpinLockGuard<'_, T>> {
+        if self.is_acquired.load(Ordering::Relaxed) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::WouldBlock,
+                "Re-entry the lock that has been acquired can cause a deadlock",
+            ));
+        }
+        Ok(self.lock())
+    }
+
     pub(self) fn unlock(&self) {
+        self.is_acquired.store(false, Ordering::Relaxed);
         self.state.store(false, Ordering::Release);
     }
 }
